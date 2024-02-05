@@ -1,8 +1,12 @@
 package org.framework.beens.factory;
 
+import org.framework.beens.factory.annotation.Autowire;
 import org.framework.beens.factory.stereotype.Component;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -44,11 +48,29 @@ public class BeanFactory {
                     }
                 }
             }
-            singletons.forEach((k,v) -> System.out.println(k + " " + v));
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
+    //Инъекция по типу
+    public void populateProperties() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        System.out.println("populateProperties");
+        for (Object object : singletons.values()) {
+            for (Field field : object.getClass().getDeclaredFields()) {
+                if (field.isAnnotationPresent(Autowire.class)) {
+                    for (Object dependency : singletons.values()) {
+                        if (dependency.getClass().equals(field.getType())) {
+                            String setterName =
+                                    "set" + field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);
+                            System.out.println("Setter name = " + setterName);
+                            Method setter = object.getClass().getMethod(setterName, dependency.getClass());
+                            setter.invoke(object, dependency);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
