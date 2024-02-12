@@ -1,9 +1,8 @@
-package org.framework.beens.factory.annotation;
+package org.framework.beens.factory.stereotype;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Autowire {
-
+public @interface Service {
 }
