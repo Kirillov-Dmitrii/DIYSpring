@@ -1,8 +1,10 @@
 package org.framework.beens.factory;
 
 import org.framework.beens.factory.annotation.Autowire;
+import org.framework.beens.factory.annotation.PreDestroy;
 import org.framework.beens.factory.config.BeanPostProcessor;
 import org.framework.beens.factory.stereotype.Component;
+import org.framework.beens.factory.stereotype.Service;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -39,7 +41,7 @@ public class BeanFactory {
                         String className = fileName.substring(0, fileName.lastIndexOf("."));
                         Class classObject = Class.forName(basePackage + "." + className);
 
-                        if (classObject.isAnnotationPresent(Component.class)) {
+                        if (classObject.isAnnotationPresent(Component.class) || classObject.isAnnotationPresent(Service.class)) {
                             System.out.println("Component: " + classObject);
                             Object instance = classObject.getDeclaredConstructor().newInstance();
                             String beanName = className.substring(0,1).toLowerCase() + className.substring(1);
@@ -52,6 +54,10 @@ public class BeanFactory {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Map<String, Object> getSingletons() {
+        return singletons;
     }
 
     //Инъекция по типу
@@ -83,11 +89,11 @@ public class BeanFactory {
         }
     }
 
-    public void initializingBeans() {
+    public void initializingBeans() throws InvocationTargetException, IllegalAccessException {
         for (String name : singletons.keySet()) {
             Object bean = singletons.get(name);
             for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
-                beanPostProcessor.postProcessBeforeInitialization(bean, name);
+                beanPostProcessor.postProcessBeforeInitialization (bean, name);
             }
 
             if (bean instanceof InitializingBean) {
@@ -103,5 +109,27 @@ public class BeanFactory {
     public void addPostProcessor(BeanPostProcessor postProcessor) {
         beanPostProcessors.add(postProcessor);
         System.out.println("PostProcessor added");
+    }
+
+    public void close()  {
+        for (Object bean : singletons.values()) {
+            Method[] methods = bean.getClass().getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.isAnnotationPresent(PreDestroy.class)) {
+                    method.setAccessible(true);
+                    try {
+                        method.invoke(bean);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    } catch (InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                if (bean instanceof DisposableBean) {
+                    ((DisposableBean) bean).destroy();
+                }
+            }
+        }
     }
 }
